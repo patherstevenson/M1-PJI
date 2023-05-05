@@ -1,5 +1,6 @@
 from scipy import ndimage
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from filter import *
 from segment_graph import *
 import time
@@ -10,7 +11,7 @@ import time
 # Returns a color image representing the segmentation.
 #
 # Inputs:
-#           in_image: image to segment.
+#           input_path: path of image to segment.
 #           sigma: to smooth the image.
 #           k: constant for threshold function.
 #           min_size: minimum component size (enforced by post-processing stage).
@@ -18,7 +19,9 @@ import time
 # Returns:
 #           num_ccs: number of connected components in the segmentation.
 # --------------------------------------------------------------------------------
-def segment(in_image, sigma, k, min_size):
+def segment(input_path, sigma, k, min_size):
+    in_image = plt.imread(input_path)
+
     start_time = time.time()
     height, width, band = in_image.shape
     print("Height:  " + str(height))
@@ -73,12 +76,28 @@ def segment(in_image, sigma, k, min_size):
     for i in range(height * width):
         colors[i, :] = random_rgb()
 
-
+    bb = {str(comp) : np.array([[width-1,0],[width*height-1,0]]) for comp in np.unique(u.elts[:,2])}
 
     for y in range(height):
         for x in range(width):
-            comp = u.find(y * width + x)
+            pixel_id = y * width + x
+
+            comp = u.find(pixel_id)
             output[y, x, :] = colors[comp, :]
+
+            comp = str(comp)
+
+            if bb[comp][0][0]%width > pixel_id%width: # most left
+                bb[comp][0][0] = pixel_id
+
+            if bb[comp][0][1]%width < pixel_id%width: # most right
+                bb[comp][0][1] = pixel_id
+
+            if bb[comp][1][0] > pixel_id: # most up
+                bb[comp][1][0] = pixel_id
+
+            if bb[comp][1][1] < pixel_id: # most down
+                bb[comp][1][1] = pixel_id
 
 
     elapsed_time = time.time() - start_time
@@ -91,16 +110,31 @@ def segment(in_image, sigma, k, min_size):
     a = fig.add_subplot(1, 2, 1)
     plt.imshow(in_image)
     a.set_title('Original Image')
+
+    for k in bb:
+        pt = bb[k]
+
+        rect = patches.Rectangle((2+(pt[0][0]%width), 2+(pt[1][0]/width)),
+                                 ((pt[0][1]%width)-2) - (pt[0][0]%width)+2,
+                                 ((pt[1][1]/width)-2) - (pt[1][0]/width),
+                linewidth=1.5, edgecolor='b', facecolor='none')
+
+        a.add_patch(rect)
+
     a = fig.add_subplot(1, 2, 2)
     plt.imshow(output.astype('uint8'))
     a.set_title('Segmented Image')
+
+    fig.savefig(f"result/{input_path.split('/')[-1]}")
+
     plt.show()
 
-    return u, output
+    return u, bb
 
 
 if __name__ == "__main__":
     import sys
+
     sigma = 0.5
     k = 500
     min = 50
@@ -109,9 +143,7 @@ if __name__ == "__main__":
 
     # Loading the image
 
-    input_image = plt.imread(input_path)
-
     print("Loading is done.")
     print("processing...")
 
-    segment(input_image, sigma, k, min)
+    segment(input_path, sigma, k, min)
