@@ -1,4 +1,6 @@
 *.swp
 __pycache__
 .ipynb_checkpoints
-data/
+data/VOC2012_test_ignore
+data/VOC2012_train_val_ignore
+
