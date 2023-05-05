@@ -1,4 +1,4 @@
-# M1-PJE-PATHER
+# M1-PJI
 
 2023 - Master 1 Machine Learning - PJI
 
