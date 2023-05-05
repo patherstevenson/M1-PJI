@@ -5,11 +5,20 @@
 # Author
 
 ```
-Nom : Pather
-Prénom : Stevenson
+Name : Stevenson Pather
 Email : stevenson.pather.etu@univ-lille.fr
 ```
 
 # Dataset 
 
-[Pascal VOC 2012 Dataset](https://www.kaggle.com/datasets/gopalbhattrai/pascal-voc-2012-dataset)
+* [Pascal VOC 2012 Dataset](https://www.kaggle.com/datasets/gopalbhattrai/pascal-voc-2012-dataset)
+
+# Supervisor
+
+* Deise Santana Maia
+
+# Initial Fork
+
+* [Ghassem Alaee, pegbis](https://github.com/salaee/pegbis)
+
+
