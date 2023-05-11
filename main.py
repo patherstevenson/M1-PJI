@@ -4,7 +4,8 @@ import matplotlib.patches as patches
 from filter import *
 from segment_graph import *
 import time
-
+from xml_parser import *
+from bndbox import *
 
 # --------------------------------------------------------------------------------
 # Segment an image:
@@ -17,7 +18,8 @@ import time
 #           min_size: minimum component size (enforced by post-processing stage).
 #
 # Returns:
-#           num_ccs: number of connected components in the segmentation.
+#        u : the universe object created
+#        bb : the bndbox dictionnary generated
 # --------------------------------------------------------------------------------
 def segment(input_path, sigma, k, min_size):
     in_image = plt.imread(input_path)
@@ -76,7 +78,9 @@ def segment(input_path, sigma, k, min_size):
     for i in range(height * width):
         colors[i, :] = random_rgb()
 
-    bb = {str(comp) : np.array([[width-1,0],[width*height-1,0]]) for comp in np.unique(u.elts[:,2])}
+
+
+    bb = BndBox(u.elts,width,height)
 
     for y in range(height):
         for x in range(width):
@@ -85,21 +89,8 @@ def segment(input_path, sigma, k, min_size):
             comp = u.find(pixel_id)
             output[y, x, :] = colors[comp, :]
 
-            comp = str(comp)
-
-            if bb[comp][0][0]%width > pixel_id%width: # most left
-                bb[comp][0][0] = pixel_id
-
-            if bb[comp][0][1]%width < pixel_id%width: # most right
-                bb[comp][0][1] = pixel_id
-
-            if bb[comp][1][0] > pixel_id: # most up
-                bb[comp][1][0] = pixel_id
-
-            if bb[comp][1][1] < pixel_id: # most down
-                bb[comp][1][1] = pixel_id
-
-
+            bb.check_pixel(str(comp),pixel_id)
+            
     elapsed_time = time.time() - start_time
     print(
         "Execution time: " + str(int(elapsed_time / 60)) + " minute(s) and " + str(
@@ -111,8 +102,8 @@ def segment(input_path, sigma, k, min_size):
     plt.imshow(in_image)
     a.set_title('Original Image')
 
-    for k in bb:
-        pt = bb[k]
+    for comp in bb.get_bndbox_id():
+        pt = bb.get_bndbox(comp)
 
         rect = patches.Rectangle((2+(pt[0][0]%width), 2+(pt[1][0]/width)),
                                  ((pt[0][1]%width)-2) - (pt[0][0]%width)+2,
