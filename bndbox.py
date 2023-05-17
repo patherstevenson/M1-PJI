@@ -1,15 +1,16 @@
 import numpy as np
+from xml_parser import *
 
 def overlap(l1, r1, l2, r2):
     x = 0
     y = 1
     
-    area1 = abs(l1[x] - r1[x]) * abs(l1[y] - r1[y])
-    area2 = abs(l2[x] - r2[x]) * abs(l2[y] - r2[y])
+    area1 = np.abs(l1[x] - r1[x]) * np.abs(l1[y] - r1[y])
+    area2 = np.abs(l2[x] - r2[x]) * np.abs(l2[y] - r2[y])
     
-    x_dist = min(r1[x], r2[x]) - max(l1[x], l2[x])
+    x_dist = np.min([r1[x], r2[x]]) - np.max([l1[x], l2[x]])
     
-    y_dist = min(r1[y], r2[y]) - max(l1[y], l2[y])
+    y_dist = np.min([l1[y], l2[y]]) - np.max([r1[y], r2[y]])
     
     areaI = 0
     
@@ -21,8 +22,11 @@ def overlap(l1, r1, l2, r2):
     return areaI/(area1 + area2 - areaI)
 
 class BndBox:
-    def __init__(self,elts,w,h):
-        self.bndbox = {str(comp) : np.array([[w-1,0],[w*h-1,0]]) for comp in np.unique(elts[:,2])}
+    def __init__(self,label,w,h):
+        self.bndbox = {str(comp) : np.array([[w-1,0],[w*h-1,0]]) for comp in label}
+        self.overlap_05 = {}
+        self.bndbox_color = {}
+        self.df_bndbox = pd.DataFrame(columns=['name','xmin','ymin','xmax','ymax'])
         self.w = w
         self.h = h
 
@@ -31,6 +35,17 @@ class BndBox:
     
     def get_bndbox_id(self):
         return self.bndbox.keys()
+    
+    def get_nb_bndbox(self):
+        return len(list(self.get_bndbox_id()))
+    
+    def get_bndbox_color(self,comp):
+        return self.bndbox_color[comp]
+
+    def init_eval(self,gt_path):
+        self.df_bndbox = parse_XML(gt_path)
+        self.overlap_05 = {i : ('None',0) for i in range(self.df_bndbox.shape[0])}
+        self.bndbox_color = {comp : "r" for comp in list(self.get_bndbox_id())}
 
     def check_pixel(self,comp,pixel_id):
         # most left
@@ -48,3 +63,21 @@ class BndBox:
         # most down
         if self.bndbox[comp][1][1] < pixel_id:
             self.bndbox[comp][1][1] = pixel_id
+
+    def start_eval(self,verbose=False):
+        for i in range(self.df_bndbox.shape[0]):
+            for comp in self.get_bndbox_id():
+    
+                l1 = (int(self.get_bndbox(comp)[0][0]%self.w),int(self.get_bndbox(comp)[1][1]/self.w))
+                r1 = (int(self.get_bndbox(comp)[0][1]%self.w),int(self.get_bndbox(comp)[1][0]/self.w))
+                l2 = (self.df_bndbox.iloc[:,1:]["xmin"][i],self.df_bndbox.iloc[:,1:]["ymax"][i])
+                r2 = (self.df_bndbox.iloc[:,1:]["xmax"][i],self.df_bndbox.iloc[:,1:]["ymin"][i])
+        
+                tmp_overlap = overlap(l1,r1,l2,r2)
+
+                if verbose: print(i,comp,tmp_overlap,self.overlap_05[i][1])
+                
+                if tmp_overlap > 0.5 and tmp_overlap > self.overlap_05[i][1]:
+                    self.bndbox_color[self.overlap_05[i][0]] = "r"
+                    self.overlap_05[i] = (comp,tmp_overlap)
+                    self.bndbox_color[comp] = "g"

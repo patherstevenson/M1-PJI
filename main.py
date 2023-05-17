@@ -1,11 +1,19 @@
 from scipy import ndimage
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import numpy as np
+from cv2 import ximgproc
+import higra as hg
+
 from filter import *
 from segment_graph import *
 import time
-from xml_parser import *
 from bndbox import *
+
+try:
+    from utils import * # imshow, locate_resource, get_sed_model_file
+except: # we are probably running from the cloud, try to fetch utils functions from URL
+    import urllib.request as request; exec(request.urlopen('https://github.com/higra/Higra-Notebooks/raw/master/utils.py').read(), globals())
 
 # --------------------------------------------------------------------------------
 # Segment an image:
@@ -21,7 +29,7 @@ from bndbox import *
 #        u : the universe object created
 #        bb : the bndbox dictionnary generated
 # --------------------------------------------------------------------------------
-def segment(input_path, sigma, k, min_size):
+def segment_felzenszwalb(input_path, sigma, k, min_size,gt_path=""):
     in_image = plt.imread(input_path)
 
     start_time = time.time()
@@ -78,9 +86,8 @@ def segment(input_path, sigma, k, min_size):
     for i in range(height * width):
         colors[i, :] = random_rgb()
 
-
-
-    bb = BndBox(u.elts,width,height)
+    # boundingbox
+    bb = BndBox(np.unique(u.elts[:,2]),width,height)
 
     for y in range(height):
         for x in range(width):
@@ -89,6 +96,7 @@ def segment(input_path, sigma, k, min_size):
             comp = u.find(pixel_id)
             output[y, x, :] = colors[comp, :]
 
+            # check if actual pixel is an outline of his seg bndbox
             bb.check_pixel(str(comp),pixel_id)
             
     elapsed_time = time.time() - start_time
@@ -96,8 +104,19 @@ def segment(input_path, sigma, k, min_size):
         "Execution time: " + str(int(elapsed_time / 60)) + " minute(s) and " + str(
             int(elapsed_time % 60)) + " seconds")
 
+    # ground thruth path 
+    if gt_path == "":
+        gt_path = "/".join(input_path.split('/')[:2]) + "/Annotations/" + input_path.split('/')[-1].rstrip(".jpg") + ".xml"
+    
+    # init dict and dataframe to eval bndbox & gt
+    bb.init_eval(gt_path)
+
+    # start eval bndbox from gt
+    bb.start_eval(verbose=False)
+
     # displaying the result
     fig = plt.figure()
+    #plt.title(f"sigma = {sigma} k = {k} min_size = {min_size}")
     a = fig.add_subplot(1, 2, 1)
     plt.imshow(in_image)
     a.set_title('Original Image')
@@ -108,7 +127,7 @@ def segment(input_path, sigma, k, min_size):
         rect = patches.Rectangle((2+(pt[0][0]%width), 2+(pt[1][0]/width)),
                                  ((pt[0][1]%width)-2) - (pt[0][0]%width)+2,
                                  ((pt[1][1]/width)-2) - (pt[1][0]/width),
-                linewidth=1.5, edgecolor='b', facecolor='none')
+                linewidth=1.5, edgecolor=bb.get_bndbox_color(comp), facecolor='none')
 
         a.add_patch(rect)
 
@@ -121,6 +140,91 @@ def segment(input_path, sigma, k, min_size):
     plt.show()
 
     return u, bb
+
+def segment_watershed(input_path,n_comp=9,gt_path=""):
+    in_image = plt.imread(input_path)
+    
+    # switch to float to avoir numerical issue with uint8
+    in_image = in_image.astype(np.float32)/255
+    
+    start_time = time.time()
+    height, width, band = in_image.shape
+    print("Height:  " + str(height))
+    print("Width:   " + str(width))
+
+    # get gradient image 
+    detector = ximgproc.createStructuredEdgeDetection(get_sed_model_file())
+    gradient_image = detector.detectEdges(in_image)
+
+    # contruct an edge weighted graph, and transfer gradient to edge weights
+    graph = hg.get_4_adjacency_graph(in_image.shape[:2])
+    edge_weights = hg.weight_graph(graph, gradient_image, hg.WeightFunction.mean)
+
+    # watershed hierarchy by area
+    tree, altitudes = hg.watershed_hierarchy_by_area(graph, edge_weights)
+    #output = hg.graph_4_adjacency_2_khalimsky(graph, hg.saliency(tree, altitudes))**0.5
+
+    # saillence graph
+    graph_saliency = hg.saliency(tree, altitudes)
+
+    # get all index of pixel which belong to comp which are < to the n_comp th highest comp
+    index = graph_saliency < np.unique(graph_saliency)[-n_comp]
+
+    # replace all index by a weight of 0 (= ignoring them)
+    graph_saliency[index] = 0
+
+    # get pixel label (= comp) from adj graph and saliency graph
+    label_watershed = hg.labelisation_watershed(graph,graph_saliency) 
+
+    # bindingbox
+    bb = BndBox(np.unique(label_watershed),width,height)
+
+    # calculate bb from watershed seg
+    for y in range(height):
+        for x in range(width):
+            bb.check_pixel(str(label_watershed[y][x]),y*width+x)
+
+    elapsed_time = time.time() - start_time
+    print(
+        "Execution time: " + str(int(elapsed_time / 60)) + " minute(s) and " + str(
+            int(elapsed_time % 60)) + " seconds")
+
+    # ground thruth path 
+    if gt_path == "":
+        gt_path = "/".join(input_path.split('/')[:2]) + "/Annotations/" + input_path.split('/')[-1].rstrip(".jpg") + ".xml"
+    
+    # init dict and dataframe to eval bndbox & gt
+    bb.init_eval(gt_path)
+
+    # start eval bndbox from gt
+    bb.start_eval(verbose=True)
+
+    # displaying the result
+    fig = plt.figure()
+
+    a = fig.add_subplot(1, 2, 1)
+    plt.imshow(in_image)
+    a.set_title('Original Image')
+
+    for comp in bb.get_bndbox_id():
+        pt = bb.get_bndbox(comp)
+
+        rect = patches.Rectangle((2+(pt[0][0]%width), 2+(pt[1][0]/width)),
+                                 ((pt[0][1]%width)-2) - (pt[0][0]%width)+2,
+                                 ((pt[1][1]/width)-2) - (pt[1][0]/width),
+                linewidth=1.5, edgecolor=bb.get_bndbox_color(comp), facecolor='none')
+
+        a.add_patch(rect)
+
+    a = fig.add_subplot(1, 2, 2)
+    plt.imshow(label_watershed)
+    a.set_title('Segmented Image')
+
+    fig.savefig(f"result/watershed_{input_path.split('/')[-1]}")
+
+    plt.show()
+
+    return graph_saliency, bb
 
 
 if __name__ == "__main__":
@@ -137,4 +241,4 @@ if __name__ == "__main__":
     print("Loading is done.")
     print("processing...")
 
-    segment(input_path, sigma, k, min)
+    segment_felzenszwalb(input_path, sigma, k, min)
