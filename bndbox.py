@@ -1,5 +1,6 @@
 import numpy as np
-from xml_parser import *
+import pandas as pd
+from xml_parser import parse_XML
 
 def overlap(l1, r1, l2, r2):
     x = 0
@@ -25,6 +26,8 @@ class BndBox:
     def __init__(self,label,w,h):
         self.bndbox = {str(comp) : np.array([[w-1,0],[w*h-1,0]]) for comp in label}
         self.overlap_05 = {}
+        self.max_overlap = {}
+        self.abo = {}
         self.bndbox_color = {}
         self.df_bndbox = pd.DataFrame(columns=['name','xmin','ymin','xmax','ymax'])
         self.w = w
@@ -45,6 +48,8 @@ class BndBox:
     def init_eval(self,gt_path):
         self.df_bndbox = parse_XML(gt_path)
         self.overlap_05 = {i : ('None',0) for i in range(self.df_bndbox.shape[0])}
+        self.max_overlap = {i : ('None',0) for i in range(self.df_bndbox.shape[0])}
+        self.abo = {name : 0 for name in np.unique(self.df_bndbox["name"].values)}
         self.bndbox_color = {comp : "r" for comp in list(self.get_bndbox_id())}
 
     def check_pixel(self,comp,pixel_id):
@@ -64,6 +69,14 @@ class BndBox:
         if self.bndbox[comp][1][1] < pixel_id:
             self.bndbox[comp][1][1] = pixel_id
 
+    def eval_abo(self):
+        l_label = np.unique(self.df_bndbox['name'])
+
+        for label in l_label:
+            index = (self.df_bndbox['name'] == label).values
+
+            self.abo[label] = (1/len(index)) * np.sum(self.max_overlap[i][1] for i in np.arange(0,len(self.max_overlap.keys()),1)[index])  
+
     def start_eval(self,verbose=False):
         for i in range(self.df_bndbox.shape[0]):
             for comp in self.get_bndbox_id():
@@ -81,3 +94,8 @@ class BndBox:
                     self.bndbox_color[self.overlap_05[i][0]] = "r"
                     self.overlap_05[i] = (comp,tmp_overlap)
                     self.bndbox_color[comp] = "g"
+                if tmp_overlap > self.max_overlap[i][1]:
+                    self.max_overlap[i] = (comp,tmp_overlap)
+        
+        # calculate ABO for each category of groundtruth
+        self.eval_abo()
