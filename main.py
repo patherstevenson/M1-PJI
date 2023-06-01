@@ -61,7 +61,7 @@ def segmentation(input_path,method="felzenszwalb",kwargs={"sigma" : 0.5, "k" : 5
     if gt_path == "": gt_path = "/".join(input_path.split('/')[:2]) + "/Annotations/" + category + "/" + input_path.split('/')[-1].rstrip(".jpg") + ".xml"
     
     # init dict and dataframe to eval bndbox & gt
-    bb.init_eval(gt_path)
+    bb.init_eval(gt_path,category)
 
     # start eval bndbox from gt
     bb.start_eval(verbose=verbose)
@@ -69,7 +69,7 @@ def segmentation(input_path,method="felzenszwalb",kwargs={"sigma" : 0.5, "k" : 5
     # plot & save results
     plot_segment(in_image,input_path,output,bb,category,k=kwargs['k'],method=method,save=save)
 
-    return bb, elapsed_time
+    return bb, output
 
 if __name__ == "__main__":
     import sys

@@ -1,7 +1,7 @@
 import pandas as pd
 import xml.etree.ElementTree as ET
 
-def parse_XML(xml_file):
+def parse_XML(xml_file,category):
     """Parse the input XML file and store the result in a pandas
     DataFrame
     """
@@ -12,7 +12,8 @@ def parse_XML(xml_file):
     bndbox = []
 
     for obj in root.findall("object"):
-        bndbox.append([obj.find("name").text,
+        if obj.find("name").text == category:
+            bndbox.append([obj.find("name").text,
                        int(obj.find("bndbox").find("xmin").text),
                        int(obj.find("bndbox").find("ymin").text),
                        int(obj.find("bndbox").find("xmax").text),
