@@ -1,7 +1,9 @@
 *.swp
 *.gz
+.vscode
 __pycache__
 .ipynb_checkpoints
+doc/
 data/VOC2012_test_ignore
 data/VOC2012_train_val_ignore
 cp_script.sh

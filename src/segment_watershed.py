@@ -1,3 +1,17 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+
+"""
+:mod:`Segment Watershed` module
+:author: Pather Stevenson - Faculté des Sciences et Technologies - Univ. Lille <http://portail.fil.univ-lille1.fr>_
+:date: May 2023
+
+Segment Watershed Module
+
+:doc: <https://higra.readthedocs.io/en/stable/notebooks.html>
+
+"""
+
 import numpy as np
 from cv2 import ximgproc
 import higra as hg
@@ -9,8 +23,25 @@ try:
 except: # we are probably running from the cloud, try to fetch utils functions from URL
     import urllib.request as request; exec(request.urlopen('https://github.com/higra/Higra-Notebooks/raw/master/utils.py').read(), globals())
 
-def segment_watershed(in_image,height,width,n_comp=9):
-    
+def segment_watershed(in_image: np.array,height: int,width: int,n_comp=9) -> tuple:
+    """
+    Perform a watershed segmentation on the given image and
+    retain exactly the given number of larger regions to retain in the hierachy
+
+    <https://hal.science/hal-01344727/document>
+
+    :param in_image: The image data as array
+    :param height: the height of in_image
+    :param width: the width of in_image
+    :param n_comp: number of larger regions to retain in the hierachy
+    :type in_image: numpy.array
+    :type height: int
+    :type width: int
+    :type n_comp: int
+
+    :return: the array indicating which region each pixel belongs to and the associated BndBox object of this segmentation
+    :rtype: tuple (numpy.ndarray, BndBox)
+    """
     # get gradient image 
     detector = ximgproc.createStructuredEdgeDetection(get_sed_model_file())
     gradient_image = detector.detectEdges(in_image)

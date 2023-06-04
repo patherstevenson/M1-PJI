@@ -1,3 +1,17 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+
+"""
+:mod:`Filter` module
+:author: <https://github.com/salaee>
+:date: May 2023
+
+Filter Module
+
+:doc: <https://github.com/salaee/pegbis>
+
+"""
+
 import numpy as np
 import math
 np.seterr(over='ignore')
