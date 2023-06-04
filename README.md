@@ -12,7 +12,9 @@ Email : stevenson.pather.etu@univ-lille.fr
 
 * Deise Santana Maia, Assistant Associate Professor IUT A​, University of Lille
 
-# Report (French only)
+# Report
+
+French only for the moment.
 
 * [REPORT.pdf](./REPORT.pdf)
 
