@@ -10,7 +10,7 @@ Email : stevenson.pather.etu@univ-lille.fr
 ```
 # Supervisor
 
-* Deise Santana Maia, Assistant Associate Professor IUT A​, University of Lille
+* Deise Santana Maia, Ph.D, Assistant Associate Professor IUT A​, University of Lille
 
 # Report
 
