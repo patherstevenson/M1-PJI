@@ -115,7 +115,7 @@ class BndBox:
         """
         self.df_bndbox = parse_XML(gt_path,category) # dataframe of the given category groundthruth
         self.overlap_05 = {i : ('None',0) for i in range(self.df_bndbox.shape[0])} # all overlap > 0.5
-        self.max_overlap = {i : ('None',0) for i in range(self.df_bndbox.shape[0])} # max overlap > 0.5
+        self.max_overlap = {i : ('None',0) for i in range(self.df_bndbox.shape[0])} # max overlap
         self.abo = {name : 0 for name in np.unique(self.df_bndbox["name"].values)} # ABO for each groundtruth of category
         self.bndbox_color = {comp : "r" for comp in list(self.get_bndbox_id())} # color assigned to each bounding box
 
@@ -209,12 +209,14 @@ class BndBox:
         :rtype: None
         """
         for i in range(self.df_bndbox.shape[0]):
+
+            l1 = (self.df_bndbox.iloc[:,1:]["xmin"][i],self.df_bndbox.iloc[:,1:]["ymax"][i])
+            r1 = (self.df_bndbox.iloc[:,1:]["xmax"][i],self.df_bndbox.iloc[:,1:]["ymin"][i])
+
             for comp in self.get_bndbox_id():
     
-                l1 = (int(self.get_bndbox(comp)[0][0]%self.w),int(self.get_bndbox(comp)[1][1]/self.w))
-                r1 = (int(self.get_bndbox(comp)[0][1]%self.w),int(self.get_bndbox(comp)[1][0]/self.w))
-                l2 = (self.df_bndbox.iloc[:,1:]["xmin"][i],self.df_bndbox.iloc[:,1:]["ymax"][i])
-                r2 = (self.df_bndbox.iloc[:,1:]["xmax"][i],self.df_bndbox.iloc[:,1:]["ymin"][i])
+                l2 = (int(self.get_bndbox(comp)[0][0]%self.w),int(self.get_bndbox(comp)[1][1]/self.w))
+                r2 = (int(self.get_bndbox(comp)[0][1]%self.w),int(self.get_bndbox(comp)[1][0]/self.w))
         
                 tmp_overlap = self.overlap(l1,r1,l2,r2)
 
